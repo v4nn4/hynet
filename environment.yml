@@ -1,0 +1,14 @@
+name: hynet
+dependencies:
+  - python=3.11
+  - pip
+  - ipykernel
+  - matplotlib
+  - seaborn
+  - numpy
+  - pandas
+  - pytorch
+  - torchvision
+  - pillow
+  - pytesseract
+  - torchmetrics
