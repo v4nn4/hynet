@@ -1,17 +1,13 @@
-import os
 import logging
-import pickle
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import pandas as pd
 import torch
 from torch import nn, optim
-from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import StepLR
+from torch.utils.data import DataLoader
 
-from .model import LeNet, initialize_weights
 from .report import TrainingReport
-
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(level=logging.INFO, format=log_format)

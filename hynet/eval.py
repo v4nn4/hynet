@@ -4,10 +4,9 @@ import pickle
 import torch
 from torch.utils.data import DataLoader
 
-
 if __name__ == "__main__":
     N, batch_size = 42, 16
-    path = R"../datasets/hynet"
+    path = R"../build/datasets/hynet"
 
     test_dataset = pickle.load(open(os.path.join(path, "test_dataset.pkl"), "rb"))
     test_dataloader = DataLoader(
@@ -16,7 +15,7 @@ if __name__ == "__main__":
     nb_classes = len(list(set([c for (_, c) in test_dataset])))
     nb_samples_test = len(test_dataloader) * batch_size
 
-    model = torch.load(f"../logs/train/model_{batch_size}.pth")
+    model = torch.load(f"../build/logs/train/model_{batch_size}.pth")
     with torch.no_grad():
         nb_correct_predictions = 0
         for inputs, labels in test_dataloader:

@@ -1,13 +1,13 @@
 from dataclasses import dataclass
+from io import BytesIO
 
 import matplotlib.pyplot as plt
 import matplotlib.style as style
 import numpy as np
 import pandas as pd
 import torch
-from torch import nn
 from PIL import Image
-from io import BytesIO
+from torch import nn
 
 
 @dataclass
