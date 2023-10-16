@@ -10,5 +10,6 @@ dependencies:
   - pytorch
   - torchvision
   - pillow
-  - pytesseract
   - torchmetrics
+  - pip:
+    - pytesseract
