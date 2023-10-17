@@ -14,8 +14,8 @@ BLACK = 0
 WHITE = 255
 
 # Model parameters
-NB_ROTATIONS = 5
-NB_BLUR_RADIUSES = 5
+NB_ROTATIONS = 20
+NB_BLUR_RADIUSES = 20
 
 
 def generate_classes(characters_to_ignore: str = "") -> List[str]:

@@ -22,15 +22,18 @@ def train(
     nb_classes: int,
     batch_size: int,
     nb_epochs: int,
-    learning_rate: float,
+    init_learning_rate: float = 0.1,
+    steplr_gamma: float = 0.5,
+    steplr_step_size: int = 10,
+    early_stopping_patience: int = 5,
 ) -> TrainingReport:
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-    scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
+    optimizer = optim.Adam(model.parameters(), lr=init_learning_rate)
+    scheduler = StepLR(optimizer, step_size=steplr_step_size, gamma=steplr_gamma)
     nb_samples_train = len(train_dataloader) * batch_size
 
     records = []
-    best_accuracy, counter, early_stopping_patience = 0, 0, 5
+    best_accuracy, counter = 0, 0
     for epoch in range(nb_epochs):
         running_training_loss = 0
         for inputs, labels in train_dataloader:

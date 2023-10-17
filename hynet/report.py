@@ -17,11 +17,35 @@ class TrainingReport:
     batch_size: int
     dataframe: pd.DataFrame
 
+    def plot(self):
+        nb_epochs = np.max(self.dataframe.index)
+        ax = (
+            self.dataframe[["epoch", "train_loss", "test_loss", "test_accuracy"]]
+            .set_index("epoch")
+            .plot(title="Training report")
+        )
+        ax.set_xlim([0, nb_epochs])
+        ax.set_ylim([0, 1])
+        return ax
+
     def to_csv(self, path) -> None:
         self.dataframe.to_csv(path)
 
     def save_model(self, path) -> None:
         torch.save(self.model, path)
+
+    def to_png(self, path) -> None:
+        style.use("bmh")
+        nb_epochs = np.max(self.dataframe.index)
+        ax = (
+            self.dataframe[["epoch", "train_loss", "test_loss", "test_accuracy"]]
+            .set_index("epoch")
+            .plot(title="Training report")
+        )
+        ax.set_xlim([0, nb_epochs])
+        ax.set_ylim([0, 1])
+        plt.savefig(path)
+        plt.close()
 
     def to_gif(self, path) -> None:
         style.use("bmh")
