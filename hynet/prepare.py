@@ -16,9 +16,11 @@ WHITE = 255
 # Model parameters
 NB_ROTATIONS = 20
 NB_BLUR_RADIUSES = 20
+NB_NOISE_INTENSITIES = 1
 
 
-def generate_classes(characters_to_ignore: str = "") -> List[str]:
+def generate_classes() -> List[str]:
+    """Generate the list of characters, i.e. the number of classes"""
     # Armenian alphabet is located between 0x531 and 0x58A
     characters = [chr(i) for i in range(0x531, 0x58A)]
     characters_to_ignore = "՗՘ՙ՚՛՜՝՞՟ՠֈ։և"
@@ -29,11 +31,23 @@ def generate_classes(characters_to_ignore: str = "") -> List[str]:
 def generate_character_image(
     character: str,
     font: ImageFont.FreeTypeFont,
-    N,
+    N: int,
     rotation: float = 0.0,
     blur_radius: float = 0.0,
     mode_filter: int = 0,
+    noise_intensity: float = 0.0,
 ) -> torch.Tensor:
+    """Generate a NxN pixels image as a torch.Tensor and apply some transformation
+
+    Args:
+        character: Character as a string
+        font: font object
+        N: number of pixels for each dimension (width, height)
+        rotation: rotation angle
+        blur_radius: box blur radius
+        mode_filter: mode filter
+        noise_intensity: intensity of noise. 1.0 means N(0, 1)
+    """
     image = Image.new("L", size=(N, N), color=WHITE)
     draw = ImageDraw.Draw(image)
     x0, y0, x1, y1 = font.getbbox(character)
@@ -46,19 +60,29 @@ def generate_character_image(
     image = image.rotate(rotation, fillcolor=WHITE)
     image = image.filter(ImageFilter.ModeFilter(mode_filter))
     image = image.filter(ImageFilter.BoxBlur(blur_radius))
-    pixel_values = list(image.getdata())
+    image_array = np.array(image)
+    noise = np.random.normal(0, 10, image_array.shape).astype(np.uint8)
+    pixel_values = np.clip(image_array - noise * noise_intensity, 0, 255).astype(
+        np.uint8
+    )
     T = torch.tensor(pixel_values, dtype=torch.float32) / 255.0
     T = T.view((1, N, N))
     return T
 
 
 def generate_dataset(
-    N,
+    N: int,
     font_names: List[str] = ["arial"],
-    rotation_angle: float = 10,
     split_ratio: float = 0.8,
 ) -> Tuple[TensorDataset, TensorDataset]:
-    """Generate train and test datasets"""
+    """Generate train and test datasets
+
+    Args:
+        N: number of pixels for each dimension (width, height)
+        font_names: list of font names. font.ttf must be available locally
+        rotation_angle: maximum rotation amplitude to be used
+        split_ratio: train/test split ratio
+    """
 
     # Generate classes
     classes = generate_classes()
@@ -66,16 +90,15 @@ def generate_dataset(
     logging.info(f"Number of classes   : {len(classes)}")
 
     # Pre-processing
-    rotations = np.arange(
-        -rotation_angle, 2 * rotation_angle, 3 * rotation_angle / NB_ROTATIONS
-    )
+    rotations = np.arange(-10, 30, 40 / NB_ROTATIONS)
     blur_radiuses = np.arange(0, 3.0, 3.0 / NB_BLUR_RADIUSES)
     mode_filters = np.array([0, 2, 4])
+    noise_intensities = np.arange(0, 1.0, 1.0 / NB_NOISE_INTENSITIES)
     logging.info(
         (
             f"Data augmentation   : {len(font_names)} fonts, "
             f"{len(rotations)} rotations, {len(blur_radiuses)} blur radiuses, "
-            f"{len(mode_filters)} mode filters"
+            f"{len(mode_filters)} mode filters, {len(noise_intensities)} noise intensities"
         )
     )
     nb_samples = (
@@ -84,6 +107,7 @@ def generate_dataset(
         * len(rotations)
         * len(blur_radiuses)
         * len(mode_filters)
+        * len(noise_intensities)
     )
     logging.info(f"Number of samples   : {nb_samples}")
 
@@ -92,11 +116,19 @@ def generate_dataset(
     label_tensor = torch.zeros((nb_samples, 1), dtype=torch.uint8)
     for font_name in font_names:
         font = ImageFont.truetype(f"{font_name}.ttf", N)
-        for i, (character, rotation, blur_radius, mode_filter) in enumerate(
-            itertools.product(classes, rotations, blur_radiuses, mode_filters)
+        for i, (
+            character,
+            rotation,
+            blur_radius,
+            mode_filter,
+            noise_intensity,
+        ) in enumerate(
+            itertools.product(
+                classes, rotations, blur_radiuses, mode_filters, noise_intensities
+            )
         ):
             T = generate_character_image(
-                character, font, N, rotation, blur_radius, mode_filter
+                character, font, N, rotation, blur_radius, mode_filter, noise_intensity
             )
             input_tensor[i, :] = T
             label_tensor[i] = classes.index(character)
