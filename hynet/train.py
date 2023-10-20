@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Tuple
 
+import numpy as np
 import pandas as pd
 import torch
 from torch import nn, optim
@@ -30,11 +31,10 @@ def train(
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=init_learning_rate)
     scheduler = StepLR(optimizer, step_size=steplr_step_size, gamma=steplr_gamma)
-    nb_samples_train = len(train_dataloader) * batch_size
 
     records = []
     best_accuracy, counter = 0, 0
-    for epoch in range(nb_epochs):
+    for epoch in np.arange(1, nb_epochs + 1):
         running_training_loss = 0
         for inputs, labels in train_dataloader:
             optimizer.zero_grad()
@@ -43,13 +43,20 @@ def train(
             loss.backward()
             optimizer.step()
             running_training_loss += loss.item()
-        training_loss = running_training_loss / nb_samples_train
         scheduler.step()
 
+        # Compute metrics on training set
+        (
+            train_loss,
+            train_accuracy,
+            training_accuracy_per_class,
+        ) = generate_metrics(model, criterion, train_dataloader, nb_classes, batch_size)
+
         # Compute metrics on test set
-        test_loss, test_accuracy, test_accuracy_per_class = generate_test_metrics(
+        test_loss, test_accuracy, test_accuracy_per_class = generate_metrics(
             model, criterion, test_dataloader, nb_classes, batch_size
         )
+
         if test_accuracy <= best_accuracy:
             counter += 1
         if counter > early_stopping_patience:
@@ -61,35 +68,41 @@ def train(
 
         # Log progress and append report
         logging.info(
-            f"Epoch = {epoch} / {nb_epochs}, Training Loss = {training_loss:.2f}, Test Loss = {test_loss:.2f}, Test Accuracy = {100 * test_accuracy:.2f}%"  # noqa: E501
+            f"Epoch = {epoch} / {nb_epochs}, Training Loss = {train_loss:.2f}, Test Loss = {test_loss:.2f}, Test Accuracy = {100 * test_accuracy:.2f}%"  # noqa: E501
         )
         record = {
             "epoch": epoch,
-            "train_loss": training_loss,
+            "train_loss": train_loss,
             "test_loss": test_loss,
+            "train_accuracy": train_accuracy,
             "test_accuracy": test_accuracy,
         }
         for k, v in test_accuracy_per_class.items():
             record[f"test_accuracy_{k}"] = v
+        for k, v in training_accuracy_per_class.items():
+            record[f"test_accuracy_{k}"] = v
         records.append(record)
+
     df = pd.DataFrame.from_records(records)
+
     return TrainingReport(
         model_name=model_name, model=model, batch_size=batch_size, dataframe=df
     )
 
 
-def generate_test_metrics(
+def generate_metrics(
     model: nn.Module,
     criterion: nn.CrossEntropyLoss,
-    test_dataloader: DataLoader,
+    data_loader: DataLoader,
     nb_classes: int,
     batch_size: int,
 ) -> Tuple[float, float, Dict[int, float]]:
-    nb_samples_test = len(test_dataloader) * batch_size
+    model.eval()  # eval mode to remove dropout
+    nb_samples_test = len(data_loader) * batch_size
     running_test_loss, nb_correct_predictions = 0, 0
     nb_correct_predictions_per_class = {c: 0 for c in range(nb_classes)}
     nb_samples_per_class = {c: 0 for c in range(nb_classes)}
-    for inputs, labels in test_dataloader:
+    for inputs, labels in data_loader:
         outputs = model(inputs)
         test_loss = criterion(outputs, labels.view(batch_size)).item()
         running_test_loss += test_loss
@@ -107,4 +120,5 @@ def generate_test_metrics(
         else torch.nan
         for c in range(nb_classes)
     }
+    model.train()
     return test_loss, test_accuracy, class_level_accuracy

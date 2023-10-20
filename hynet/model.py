@@ -24,17 +24,23 @@ class LeNet(nn.Module):
         self.fc3 = nn.Linear(84, C)
         self.sm = nn.Softmax(dim=1)
 
+        # Initialize weights
+        gain = nn.init.calculate_gain("tanh")
+        nn.init.xavier_normal_(self.conv1.weight, gain)
+        nn.init.xavier_normal_(self.conv2.weight, gain)
+        nn.init.xavier_normal_(self.fc1.weight, gain)
+        nn.init.zeros_(self.fc1.bias)
+        nn.init.xavier_normal_(self.fc2.weight, gain)
+        nn.init.zeros_(self.fc2.bias)
+        nn.init.xavier_normal_(self.fc3.weight, 1.0)
+        nn.init.zeros_(self.fc3.bias)
+
     def forward(self, x):
-        x = (x - self.mean) / self.std
-        x = self.pool(torch.tanh(self.conv1(x)))
-        x = self.pool(torch.tanh(self.conv2(x)))
+        x = (x - self.mean) / self.std  # normalize
+        x = self.pool(torch.tanh(self.conv1(x)))  # conv2d + tanh + pool
+        x = self.pool(torch.tanh(self.conv2(x)))  # conv2d + tanh + pool
         x = x.view(-1, 16 * self.D * self.D)  # flatten
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
-        x = self.fc3(x)
-        return self.sm(x)
-
-
-def initialize_weights(module):
-    if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
-        nn.init.xavier_normal_(module.weight, gain=nn.init.calculate_gain("tanh"))
+        x = torch.tanh(self.fc1(x))  # fc layer + tanh
+        x = torch.tanh(self.fc2(x))  # fc layer + tanh
+        x = self.fc3(x)  # fc layer
+        return self.sm(x)  # softmax to output probabilities
