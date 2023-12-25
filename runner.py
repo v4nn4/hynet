@@ -2,12 +2,12 @@ import os
 import pickle
 
 import fire
-import torch
 from torch.utils.data import DataLoader
 
 from hynet.model import LeNet
 from hynet.prepare import generate_classes, generate_dataset
 from hynet.train import train
+from hynet.evaluate import evaluate
 
 
 class Runner(object):
@@ -17,7 +17,6 @@ class Runner(object):
         Args:
             N (int, optional): image size. Defaults to 56.
         """
-        N = 56  # 56x56 pixels
         font_names = ["hynet/fonts/Mk_Parz_U-Italic"]
         train_dataset, test_dataset = generate_dataset(
             font_names=font_names, N=N, split_ratio=0.8
@@ -25,8 +24,8 @@ class Runner(object):
 
         path = R"build/datasets/hynet"
         os.makedirs(path, exist_ok=True)
-        train_dataset = pickle.load(open(os.path.join(path, "train_dataset.pkl"), "rb"))
-        test_dataset = pickle.load(open(os.path.join(path, "test_dataset.pkl"), "rb"))
+        # train_dataset = pickle.load(open(os.path.join(path, "train_dataset.pkl"), "rb"))
+        # test_dataset = pickle.load(open(os.path.join(path, "test_dataset.pkl"), "rb"))
         with open(os.path.join(path, "train_dataset.pkl"), "wb") as f:
             pickle.dump(train_dataset, f)
         with open(os.path.join(path, "test_dataset.pkl"), "wb") as f:
@@ -88,30 +87,14 @@ class Runner(object):
         report.save_fig(os.path.join(train_folder, "report.svg"))  # plot report as png
         report.to_csv(os.path.join(train_folder, "report.csv"))  # export full report
 
-    def evaluate(self, batch_size: int = 16):
+    def evaluate(self, N: int = 56, batch_size: int = 16):
         """Run inference on trained model
 
         Args:
+            N (int, optional): image size. Defaults to 56.
             batch_size (int, optional): batch size. Defaults to 16.
         """
-        path = R"../build/datasets/hynet"
-
-        test_dataset = pickle.load(open(os.path.join(path, "test_dataset.pkl"), "rb"))
-        test_dataloader = DataLoader(
-            test_dataset, batch_size=batch_size, shuffle=False, drop_last=True
-        )
-        # nb_classes = len(list(set([c for (_, c) in test_dataset])))
-        nb_samples_test = len(test_dataloader) * batch_size
-
-        model = torch.load(f"../build/logs/train/model_{batch_size}.pth")
-        with torch.no_grad():
-            nb_correct_predictions = 0
-            for inputs, labels in test_dataloader:
-                outputs = model(inputs)
-                _, predicted = torch.max(outputs, 1)
-                nb_correct_predictions += (predicted == labels.flatten()).sum().item()
-            test_accuracy = nb_correct_predictions / nb_samples_test
-            print(test_accuracy)
+        evaluate(N=N, batch_size=batch_size)
 
 
 if __name__ == "__main__":

@@ -37,7 +37,12 @@ def generate_character_image(
     mode_filter: int = 0,
     noise_intensity: float = 0.0,
 ) -> torch.Tensor:
-    """Generate a NxN pixels image as a torch.Tensor and apply some transformation
+    """Generates a N x N pixels image of a character. Methodology :
+      1. Generate a `PIL.Image` in L mode
+      2. Draws the character using the input font
+      3. Applies some `PIL.ImageFilter` transformations
+      4. Convert to `torch.Tensor` with type `torch.float32` and values between 0 and 1
+      5. Adds a batch dimension
 
     Args:
         character: Character as a string

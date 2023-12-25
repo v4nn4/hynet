@@ -30,8 +30,8 @@ class TrainingReport:
         plt.savefig(path)
         plt.close()
 
-    def to_csv(self, path) -> None:
+    def to_csv(self, path: str) -> None:
         self.dataframe.to_csv(path)
 
-    def save_model(self, path) -> None:
-        torch.save(self.model, path)
+    def save_model(self, path: str) -> None:
+        torch.save(self.model.state_dict(), path)
