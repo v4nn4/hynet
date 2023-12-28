@@ -1,10 +1,8 @@
 import os
 import pickle
 
-from PIL import Image
 import torch
 from torch.utils.data import DataLoader
-from torchvision import transforms
 
 from .model import LeNet
 from .prepare import generate_classes
@@ -14,7 +12,7 @@ def single_evaluate(image: torch.tensor, N: int) -> str:
     classes = generate_classes()
     nb_classes = len(classes)
 
-    model = LeNet(N=N, C=nb_classes)
+    model = LeNet(N=N, num_classes=nb_classes)
     model.load_state_dict(torch.load("build/logs/train/model.pt"))
     model.eval()
     with torch.no_grad():
@@ -35,7 +33,7 @@ def evaluate(N: int = 56, batch_size: int = 16) -> None:
     nb_classes = len(classes)
     nb_samples_test = len(test_dataloader) * batch_size
 
-    model = LeNet(N=N, C=nb_classes)
+    model = LeNet(N=N, num_classes=nb_classes)
     model.load_state_dict(torch.load("build/logs/train/model.pt"))
     model.eval()
     with torch.no_grad():

@@ -11,7 +11,7 @@ torch.manual_seed(1337)
 class LeNet(nn.Module):
     """LeNet-5 (1998)"""
 
-    def __init__(self, N: int, C: int, mean: float = 0.5, std: float = 0.01):
+    def __init__(self, N: int, num_classes: int, mean: float = 0.5, std: float = 0.01):
         super(LeNet, self).__init__()
         self.mean = mean
         self.std = std
@@ -21,7 +21,7 @@ class LeNet(nn.Module):
         self.D = int(((N - 4) / 2 - 4) / 2)  # 4 for N = 28
         self.fc1 = nn.Linear(16 * self.D * self.D, 120)
         self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, C)
+        self.fc3 = nn.Linear(84, num_classes)
         self.sm = nn.Softmax(dim=1)
 
         # Initialize weights

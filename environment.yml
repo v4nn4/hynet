@@ -11,6 +11,8 @@ dependencies:
   - torchvision
   - pillow
   - torchmetrics
+  - tensorboard
+  - tbparse
   - pip:
     - pytesseract
     - black

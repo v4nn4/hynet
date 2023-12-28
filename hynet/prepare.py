@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from torch.utils.data import TensorDataset
 
@@ -14,15 +15,16 @@ BLACK = 0
 WHITE = 255
 
 # Model parameters
-NB_ROTATIONS = 20
-NB_BLUR_RADIUSES = 20
-NB_NOISE_INTENSITIES = 1
+NB_ROTATIONS = 4
+NB_BLUR_RADIUSES = 4
+NB_NOISE_INTENSITIES = 4
 
 
 def generate_classes() -> List[str]:
     """Generate the list of characters, i.e. the number of classes"""
     # Armenian alphabet is located between 0x531 and 0x58A
-    characters = [chr(i) for i in range(0x531, 0x58A)]
+    # Lower case characters start at 0x561
+    characters = [chr(i) for i in range(0x561, 0x58A)]
     characters_to_ignore = "՗՘ՙ՚՛՜՝՞՟ՠֈ։և"
     characters = [c for c in characters if c not in list(characters_to_ignore)]
     return characters
@@ -42,7 +44,7 @@ def generate_character_image(
       2. Draws the character using the input font
       3. Applies some `PIL.ImageFilter` transformations
       4. Convert to `torch.Tensor` with type `torch.float32` and values between 0 and 1
-      5. Adds a batch dimension
+      5. Adds a channel dimension (black and white)
 
     Args:
         character: Character as a string
@@ -77,22 +79,20 @@ def generate_character_image(
 
 def generate_dataset(
     N: int,
-    font_names: List[str] = ["arial"],
-    split_ratio: float = 0.8,
+    font_file_paths: List[str],
 ) -> Tuple[TensorDataset, TensorDataset]:
     """Generate train and test datasets
 
     Args:
         N: number of pixels for each dimension (width, height)
         font_names: list of font names. font.ttf must be available locally
-        rotation_angle: maximum rotation amplitude to be used
-        split_ratio: train/test split ratio
     """
 
     # Generate classes
     classes = generate_classes()
+    num_classes = len(classes)
     logging.info(f"Characters used     : {''.join(classes)}")
-    logging.info(f"Number of classes   : {len(classes)}")
+    logging.info(f"Number of classes   : {num_classes}")
 
     # Pre-processing
     rotations = np.arange(-10, 30, 40 / NB_ROTATIONS)
@@ -101,14 +101,14 @@ def generate_dataset(
     noise_intensities = np.arange(0, 1.0, 1.0 / NB_NOISE_INTENSITIES)
     logging.info(
         (
-            f"Data augmentation   : {len(font_names)} fonts, "
+            f"Data augmentation   : {len(font_file_paths)} fonts, "
             f"{len(rotations)} rotations, {len(blur_radiuses)} blur radiuses, "
             f"{len(mode_filters)} mode filters, {len(noise_intensities)} noise intensities"
         )
     )
     nb_samples = (
-        len(classes)
-        * len(font_names)
+        num_classes
+        * len(font_file_paths)
         * len(rotations)
         * len(blur_radiuses)
         * len(mode_filters)
@@ -118,9 +118,9 @@ def generate_dataset(
 
     # Initialize input and label tensors, then fill
     input_tensor = torch.zeros((nb_samples, 1, N, N), dtype=torch.float32)
-    label_tensor = torch.zeros((nb_samples, 1), dtype=torch.uint8)
-    for font_name in font_names:
-        font = ImageFont.truetype(f"{font_name}.ttf", N)
+    label_index_tensor = torch.zeros((nb_samples), dtype=torch.int64)
+    for font_file_path in font_file_paths:
+        font = ImageFont.truetype(f"{font_file_path}", N)
         for i, (
             character,
             rotation,
@@ -136,16 +136,14 @@ def generate_dataset(
                 character, font, N, rotation, blur_radius, mode_filter, noise_intensity
             )
             input_tensor[i, :] = T
-            label_tensor[i] = classes.index(character)
+            index = classes.index(character)
+            label_index_tensor[i] = index
+    label_tensor = F.one_hot(label_index_tensor, num_classes=num_classes).float()
 
-    # Split between train and test datasets
-    split_index = int(split_ratio * nb_samples)
+    # Shuffle
     shuffled_indices = torch.randperm(input_tensor.size(0))
     input_tensor = input_tensor[shuffled_indices]
     label_tensor = label_tensor[shuffled_indices]
 
-    train_dataset = TensorDataset(
-        input_tensor[:split_index], label_tensor[:split_index]
-    )
-    test_dataset = TensorDataset(input_tensor[split_index:], label_tensor[split_index:])
-    return train_dataset, test_dataset
+    dataset = TensorDataset(input_tensor, label_tensor)
+    return dataset
