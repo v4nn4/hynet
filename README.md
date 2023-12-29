@@ -15,7 +15,7 @@ conda env create -n hynet -f environment.yml
 
 ```
 conda activate hynet
-python runner.py prepare --N=56
-python runner.py train --N=56 --batches=16
-python runner.py evaluate --batches=16
+python runner.py prepare --N=32
+python runner.py train --N=32
+python runner.py evaluate --N=32 --name=2023-12-28_17-02-22
 ```
